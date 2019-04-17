@@ -1,0 +1,20 @@
+Homestead.yaml
+Homestead.json
+.env
+.tmp
+.idea
+.vscode/
+.backup
+.DS_Store
+.DS_Store?
+._*
+.Trashes
+ehthumbs.db
+Thumbs.db
+vendor/**/.git
+tags
+.tags_swap
+
+# executable
+blevefdb
+go.sum
