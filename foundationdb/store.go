@@ -21,10 +21,9 @@ const (
 
 // Store is a FoundationDB implementation of bleve KVStore interface
 type Store struct {
-	db        *fdb.Database
-	mo        store.MergeOperator
-	sub       subspace.Subspace
-	prefixBuf *bytes.Buffer
+	db  *fdb.Database
+	mo  store.MergeOperator
+	sub subspace.Subspace
 }
 
 // New returns a new Store for interacting with FoundationDB
@@ -53,11 +52,6 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 
 		subspace := config["subspace"].(string)
 		sub = dir.Sub(subspace)
-
-		// init prefix buffer used for getting prefix range when using subspace
-		buf = bytes.NewBuffer(sub.Bytes())
-		// add []byte type packed Tuple prefix (separates subspace prefix and value)
-		buf.WriteByte(byte(byteprefix))
 	}
 
 	if err != nil {
@@ -105,18 +99,20 @@ func (s *Store) getPrefixRange(key []byte) (keyRange fdb.KeyRange, err error) {
 		return fdb.PrefixRange(key)
 	}
 
-	buf := *s.prefixBuf
-	buf.Write(key)
-
-	keyRange, err = fdb.PrefixRange(buf.Bytes())
-	if err != nil {
-		return
-	}
-
-	return keyRange, nil
+	return fdb.KeyRange{
+		Begin: s.sub.Pack(tuple.Tuple{concat(key, 0x00)}),
+		End:   s.sub.Pack(tuple.Tuple{concat(key, 0xFF)}),
+	}, nil
 }
 
 // Register KVStore to bleve store registry
 func init() {
 	registry.RegisterKVStore(Name, New)
+}
+
+func concat(a []byte, b ...byte) []byte {
+	r := make([]byte, len(a)+len(b))
+	copy(r, a)
+	copy(r[len(a):], b)
+	return r
 }
