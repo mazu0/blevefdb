@@ -43,7 +43,6 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 
 	// get foundationdb config
 	var sub subspace.Subspace
-	var buf *bytes.Buffer
 	if cDir, exists := config["directory"]; exists {
 		dir, err := directory.CreateOrOpen(db, []string{cDir.(string)}, nil)
 		if err != nil {
@@ -62,7 +61,6 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 		mo:        mo,
 		db:        &db,
 		sub:       sub,
-		prefixBuf: buf,
 	}, nil
 }
 
