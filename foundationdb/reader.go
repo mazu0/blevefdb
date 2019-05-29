@@ -25,8 +25,7 @@ func (r *Reader) Get(key []byte) ([]byte, error) {
 
 // MultiGet retrieves multiple values in one call.
 func (r *Reader) MultiGet(keys [][]byte) ([][]byte, error) {
-	// TODO
-	panic("Reader MultiGet method not implemented")
+	return store.MultiGet(r, keys)
 }
 
 // PrefixIterator returns a KVIterator that iterates through all KeyValue's with the specified prefix

@@ -1,8 +1,6 @@
 package foundationdb
 
 import (
-	"bytes"
-
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/directory"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/subspace"
@@ -58,9 +56,9 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 	}
 
 	return &Store{
-		mo:        mo,
-		db:        &db,
-		sub:       sub,
+		mo:  mo,
+		db:  &db,
+		sub: sub,
 	}, nil
 }
 
