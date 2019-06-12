@@ -7,6 +7,7 @@ import (
 
 // Iterator is a foundationDB implementation of bleve KVIterator interface
 type Iterator struct {
+	store    *Store
 	tx       fdb.Transaction
 	iterator *fdb.RangeIterator
 	curr     *fdb.KeyValue
@@ -14,7 +15,7 @@ type Iterator struct {
 	err      error
 }
 
-func newIterator(db *fdb.Database, keyRange fdb.KeyRange) store.KVIterator {
+func newIterator(store *Store, db *fdb.Database, keyRange fdb.KeyRange) store.KVIterator {
 	tx, err := db.CreateTransaction()
 	if err != nil {
 		return &Iterator{
@@ -23,6 +24,7 @@ func newIterator(db *fdb.Database, keyRange fdb.KeyRange) store.KVIterator {
 	}
 
 	it := &Iterator{
+		store:    store,
 		tx:       tx,
 		iterator: tx.GetRange(keyRange, fdb.RangeOptions{}).Iterator(),
 	}
@@ -61,7 +63,11 @@ func (i *Iterator) Key() []byte {
 		return nil
 	}
 
-	return i.curr.Key
+	if i.store.sub == nil {
+		return i.curr.Key
+	}
+
+	return i.store.unformatKey(i.curr.Key)
 }
 
 // Value returns the value of the KeyValue pointed to by the iterator
@@ -89,7 +95,11 @@ func (i *Iterator) Current() ([]byte, []byte, bool) {
 		return nil, nil, false
 	}
 
-	return i.curr.Key, i.curr.Value, true
+	if i.store.sub == nil {
+		return i.curr.Key, i.curr.Value, true
+	}
+
+	return i.store.unformatKey(i.curr.Key), i.curr.Value, true
 }
 
 // Close closes the iterator

@@ -37,13 +37,13 @@ func (r *Reader) PrefixIterator(prefix []byte) store.KVIterator {
 		}
 	}
 
-	return newIterator(r.db, prefixRange)
+	return newIterator(r.store, r.db, prefixRange)
 }
 
 // RangeIterator returns a KVIterator that iterates
 // through all KeyValue's with key >= start AND < end
 func (r *Reader) RangeIterator(start, end []byte) store.KVIterator {
-	return newIterator(r.db, fdb.KeyRange{
+	return newIterator(r.store, r.db, fdb.KeyRange{
 		Begin: r.store.formatKey(start),
 		End:   r.store.formatKey(end),
 	})
