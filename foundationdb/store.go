@@ -1,6 +1,8 @@
 package foundationdb
 
 import (
+	"bytes"
+
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/directory"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/subspace"
@@ -12,9 +14,6 @@ import (
 const (
 	// Name is the name of this KVStore that is registered in bleve store registry
 	Name = "foundationdb"
-
-	// prefix for []byte keys (tuple packing)
-	byteprefix = 0x01
 )
 
 // Store is a FoundationDB implementation of bleve KVStore interface
@@ -22,6 +21,8 @@ type Store struct {
 	db  *fdb.Database
 	mo  store.MergeOperator
 	sub subspace.Subspace
+	// prefix length used for unformatting keys
+	pl int
 }
 
 // New returns a new Store for interacting with FoundationDB
@@ -41,6 +42,7 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 
 	// get foundationdb config
 	var sub subspace.Subspace
+	var pl int
 	if cDir, exists := config["directory"]; exists {
 		dir, err := directory.CreateOrOpen(db, []string{cDir.(string)}, nil)
 		if err != nil {
@@ -49,6 +51,8 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 
 		subspace := config["subspace"].(string)
 		sub = dir.Sub(subspace)
+		// prefix length is size of the subspace + prefix used for different elements in a packed Tuple
+		pl = len(sub.Bytes()) + 1
 	}
 
 	if err != nil {
@@ -59,6 +63,7 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 		mo:  mo,
 		db:  &db,
 		sub: sub,
+		pl:  pl,
 	}, nil
 }
 
@@ -88,6 +93,15 @@ func (s *Store) formatKey(key []byte) fdb.Key {
 	}
 
 	return s.sub.Pack(tuple.Tuple{key})
+}
+
+func (s *Store) unformatKey(key fdb.Key) []byte {
+	if s.sub == nil {
+		return []byte(key)
+	}
+
+	// value without subspace, type prefix and extra bytes added by tuple Pack in formatKey
+	return bytes.Replace(key[s.pl:len(key)-1], []byte{0x00, 0xFF}, []byte{0x00}, -1)
 }
 
 func (s *Store) getPrefixRange(key []byte) (keyRange fdb.KeyRange, err error) {
