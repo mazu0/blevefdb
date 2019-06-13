@@ -1,6 +1,8 @@
 package foundationdb
 
 import (
+	"bytes"
+
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"github.com/blevesearch/bleve/index/store"
 )
@@ -36,8 +38,11 @@ func newIterator(store *Store, db *fdb.Database, keyRange fdb.KeyRange) store.KV
 
 // Seek will advance the iterator to the specified KeyValue
 func (i *Iterator) Seek(key []byte) {
-	// TODO
-	panic("Iterator Seek method not implemented")
+	for ; !i.done; i.Next() {
+		if bytes.Compare(i.Key(), key) < 0 {
+			return
+		}
+	}
 }
 
 // Next will advance the iterator to the next KeyValue if exists
