@@ -32,4 +32,4 @@ go test -cleanup=false
 
 Warning
 ------
-FoundationDB usage with subspaces is currently in development and the search is not working.
+FoundationDB usage with subspaces is currently in testing stage.
