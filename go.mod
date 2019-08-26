@@ -3,7 +3,7 @@ module github.com/mazu0/blevefdb
 require (
 	github.com/RoaringBitmap/roaring v0.4.17 // indirect
 	github.com/Smerity/govarint v0.0.0-20150407073650-7265e41f48f1 // indirect
-	github.com/apple/foundationdb/bindings/go v0.0.0-20190311060400-f2d582ffa197
+	github.com/apple/foundationdb/bindings/go v0.0.0-20190823224236-83d7faeb5be8
 	github.com/blevesearch/bleve v0.7.0
 	github.com/blevesearch/blevex v0.0.0-20180227211930-4b158bb555a3 // indirect
 	github.com/blevesearch/go-porterstemmer v1.0.2 // indirect

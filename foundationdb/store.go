@@ -35,7 +35,14 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 		}
 	}
 
-	db, err := fdb.OpenDefault()
+	var db fdb.Database
+	var err error
+	if clusterFile, exists := config["clusterFile"]; exists {
+		db, err = fdb.OpenDatabase(clusterFile.(string))
+	} else {
+		db, err = fdb.OpenDefault()
+	}
+
 	if err != nil {
 		return nil, err
 	}
