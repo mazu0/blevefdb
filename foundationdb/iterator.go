@@ -7,7 +7,9 @@ import (
 	"github.com/blevesearch/bleve/index/store"
 )
 
-var ErrTxTimeout = "FoundationDB error code 1007 (Transaction is too old to perform reads or be committed)"
+var ErrTxTimeout = "FoundationDB error code 1031 (Operation aborted because the transaction timed out)"
+var ErrTxTooOld = "FoundationDB error code 1007 (Transaction is too old to perform reads or be committed)"
+
 
 // Iterator is a foundationDB implementation of bleve KVIterator interface
 type Iterator struct {
@@ -18,10 +20,10 @@ type Iterator struct {
 	curr     *fdb.KeyValue
 	done     bool
 	err      error
-	keyRange fdb.KeyRange
+	keyRange fdb.Range
 }
 
-func newIterator(store *Store, db *fdb.Database, keyRange fdb.KeyRange) store.KVIterator {
+func newIterator(store *Store, db *fdb.Database, keyRange fdb.Range) store.KVIterator {
 	tx, iter, err := createFdbTxAndIterator(db, keyRange)
 	if err != nil {
 		return &Iterator{
@@ -59,35 +61,48 @@ func (i *Iterator) Next() {
 		return
 	}
 
-	kv, err := i.iterator.Get()
+	kv, err := i.get()
 	if err != nil {
-		// refresh transaction and set iterator to a new range (from current key to original range end)
-		if ErrTxTimeout == err.Error() && i.curr != nil {
-			i.tx.Cancel()
-			i.tx, i.iterator, err = createFdbTxAndIterator(
-				i.db,
-				fdb.KeyRange{
-					Begin: i.curr.Key,
-					End:   i.keyRange.End,
-				},
-			)
-
-			// error creating transaction
-			if err != nil {
-				i.curr = nil
-				i.err = err
-				return
-			}
-
-			i.Next()
-			return
-		}
-
 		i.curr = nil
+		i.done = true
 		i.err = err
+
 		return
 	}
 	i.curr = &kv
+}
+
+func (i *Iterator) get() (kv fdb.KeyValue, err error) {
+	kv, err = i.iterator.Get()
+	if err == nil {
+		return kv, err
+	}
+
+	errMsg := err.Error()
+	// if transaction timed out refresh transaction and set iterator
+	// to a new range (next from current key to original range end)
+	if (ErrTxTimeout == errMsg || ErrTxTooOld == errMsg) && i.curr != nil {
+		i.tx.Cancel()
+		_, e := i.keyRange.FDBRangeKeySelectors()
+		i.tx, i.iterator, err = createFdbTxAndIterator(
+			i.db,
+			fdb.SelectorRange{
+				Begin: fdb.FirstGreaterThan(i.curr.Key),
+				End:   e,
+			},
+		)
+
+		if !i.iterator.Advance() {
+			i.done = true
+			i.err = nil
+
+			return kv, err
+		}
+
+		return i.iterator.Get()
+	}
+
+	return kv, err
 }
 
 // Key returns the key of the KeyValue pointed to by the iterator
@@ -148,7 +163,7 @@ func (i *Iterator) Close() error {
 // Creates
 // - new transaction for getting range iterator and for cancelling in Close
 // - range iterator
-func createFdbTxAndIterator(db *fdb.Database, keyRange fdb.KeyRange) (fdb.Transaction, *fdb.RangeIterator, error) {
+func createFdbTxAndIterator(db *fdb.Database, keyRange fdb.Range) (fdb.Transaction, *fdb.RangeIterator, error) {
 	tx, err := db.CreateTransaction()
 	if err != nil {
 		return tx, nil, err
