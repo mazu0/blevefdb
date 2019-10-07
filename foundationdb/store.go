@@ -47,6 +47,13 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 		return nil, err
 	}
 
+	if timeout, exists := config["transactionTimeout"]; exists {
+		err = db.Options().SetTransactionTimeout(timeout.(int64))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// get foundationdb config
 	var sub subspace.Subspace
 	var pl int
